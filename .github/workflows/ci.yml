@@ -16,7 +16,7 @@ concurrency:
 jobs:
   validate:
     name: Build lint tests and smoke
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -25,6 +25,11 @@ jobs:
 
       - name: Build validation image
         run: docker build --target build -t unecont-check:ci .
+
+      - name: Validate script and dashboard syntax
+        run: |
+          bash -n scripts/deploy.sh
+          docker run --rm unecont-check:ci node -e 'JSON.parse(require("node:fs").readFileSync("observability/grafana/provisioning/dashboards/json/api.json","utf8")); console.log("Dashboard JSON valid");'
 
       - name: Lint infrastructure instrumentation
         # Existing upstream lint failures are outside this validation scope.
@@ -51,6 +56,7 @@ jobs:
       - name: Build and start Compose
         run: |
           docker compose config --quiet
+          GRAFANA_PASSWORD=ci-validation-only docker compose -f docker-compose.yml -f docker-compose.observability.yml config --quiet
           docker compose --parallel 1 build
           docker compose up -d --wait --wait-timeout 120
 
@@ -78,7 +84,7 @@ jobs:
     name: Publish GHCR
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
