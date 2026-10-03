@@ -1,0 +1,50 @@
+logging {
+  level = "info"
+}
+
+discovery.docker "api" {
+  host = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
+
+  filter {
+    name = "label"
+    values = [
+      "com.docker.compose.project=unecont",
+      "com.docker.compose.service=api",
+    ]
+  }
+}
+
+discovery.relabel "api" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex = "/(.*)"
+    target_label = "container"
+  }
+
+  rule {
+    target_label = "app"
+    replacement = "realworld-api"
+  }
+
+  rule {
+    target_label = "environment"
+    replacement = "local"
+  }
+}
+
+loki.source.docker "api" {
+  host = "unix:///var/run/docker.sock"
+  targets = discovery.docker.api.targets
+  relabel_rules = discovery.relabel.api.rules
+  forward_to = [loki.write.local.receiver]
+  refresh_interval = "5s"
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

@@ -30,7 +30,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: api
-          image: unecont-api:local
+          image: ghcr.io/laguirre06/unecont-devops-azure:sha-dcf6958ed95bb28adc34c64ef5de4cefccf66eb9
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
