@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: unecont
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: unecont
+data:
+  NODE_ENV: production
+  HOST: "0.0.0.0"
+  PORT: "3000"

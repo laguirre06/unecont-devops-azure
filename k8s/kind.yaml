@@ -1,0 +1,12 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: unecont
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.35.8@sha256:07b2536e30b803ed61d1677a79df6115f798ce64c80f9e22f6ed45afd09323c0
+    kubeadmConfigPatches:
+      - |
+        kind: KubeletConfiguration
+        # Local lab compatibility with Docker Desktop using cgroup v1.
+        # Remove this exception when the Docker host uses cgroup v2.
+        failCgroupV1: false
