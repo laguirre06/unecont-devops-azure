@@ -40,3 +40,10 @@ testem.log
 Thumbs.db
 
 .nx/cache
+
+# Local environment files
+.env.*
+!.env.example
+
+# Local tooling
+/.tools/

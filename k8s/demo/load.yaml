@@ -1,0 +1,68 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: api-load
+  namespace: unecont
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 240
+  template:
+    metadata:
+      labels:
+        app: api-load
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: load
+          image: node:22-bookworm-slim
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          command: ["node", "-e"]
+          args:
+            - |
+              const http = require('node:http');
+              const end = Date.now() + 180000;
+              let ok = 0, failed = 0;
+              function request() {
+                return new Promise(resolve => {
+                  const req = http.get('http://api/', { agent: false }, res => {
+                    res.resume();
+                    res.on('end', () => {
+                      res.statusCode === 200 ? ok++ : failed++;
+                      resolve();
+                    });
+                    res.on('error', () => { failed++; resolve(); });
+                  });
+                  req.setTimeout(3000, () => req.destroy());
+                  req.on('error', () => { failed++; resolve(); });
+                });
+              }
+              async function worker() {
+                while (Date.now() < end) await request();
+              }
+              const timer = setInterval(() => {
+                console.log(JSON.stringify({ ok, failed }));
+              }, 30000);
+              Promise.all(Array.from({ length: 32 }, worker)).then(() => {
+                clearInterval(timer);
+                console.log(JSON.stringify({ event: 'load_completed', ok, failed }));
+                process.exit(failed ? 1 : 0);
+              });
